@@ -9,11 +9,6 @@ jobs:
   build-and-publish:
     name: Build & publish to PyPI
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pgforge
-    permissions:
-      id-token: write   # for PyPI trusted publishing (no API token needed)
     steps:
       - uses: actions/checkout@v4
 
@@ -35,3 +30,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          password: ${{ secrets.PYPI_API_TOKEN }}
