@@ -7,7 +7,6 @@ Run ``pgforge --help`` to see all commands. The handlers themselves live in
 from __future__ import annotations
 
 import sys
-from typing import Optional
 
 import typer
 
@@ -50,13 +49,13 @@ def root(
     json_out: bool = typer.Option(
         False, "--json", help="Emit machine-readable JSON to stdout (where supported)."
     ),
-    state_file: Optional[str] = typer.Option(
+    state_file: str | None = typer.Option(
         None,
         "--state-file",
         envvar="PGFORGE_STATE_FILE",
         help="Override the path to state.json.",
     ),
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None, "--version", callback=_version_callback, is_eager=True, help="Show version and exit."
     ),
 ) -> None:
@@ -81,13 +80,29 @@ def _register_commands() -> None:
     """Import command modules lazily so ``pgforge --help`` stays fast."""
     from pgforge.commands import (
         destroy as destroy_cmd,
+    )
+    from pgforge.commands import (
         doctor as doctor_cmd,
+    )
+    from pgforge.commands import (
         key as key_cmd,
+    )
+    from pgforge.commands import (
         metrics as metrics_cmd,
+    )
+    from pgforge.commands import (
         provision as provision_cmd,
+    )
+    from pgforge.commands import (
         snapshot as snapshot_cmd,
+    )
+    from pgforge.commands import (
         ssh_psql as ssh_psql_cmd,
+    )
+    from pgforge.commands import (
         state_cmd,
+    )
+    from pgforge.commands import (
         status as status_cmd,
     )
 

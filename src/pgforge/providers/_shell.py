@@ -20,8 +20,9 @@ import re
 import shutil
 import subprocess
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 from pgforge.errors import (
     ProviderAPIError,

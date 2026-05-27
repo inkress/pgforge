@@ -24,11 +24,9 @@ import secrets
 import shlex
 import string
 from datetime import datetime, timezone
-from typing import Optional
 
 import typer
 
-from pgforge import __version__
 from pgforge.commands._common import emit_json, is_json, store
 from pgforge.errors import (
     ConfigError,
@@ -80,7 +78,7 @@ def provision(
     provider_name: str = typer.Option(..., "--provider", help="Cloud provider."),
     server: str = typer.Option(..., "--server", help="Server id or name to attach the volume to."),
     size: int = typer.Option(..., "--size", help="Volume size in GB (provider minimums apply)."),
-    location: Optional[str] = typer.Option(
+    location: str | None = typer.Option(
         None, "--location", help="Cloud location (only required when the provider can't infer)."
     ),
     kms: str = typer.Option("local", "--kms", help="KMS backend (local|aws-kms|gcp-kms|azure-kv|vault)."),
@@ -88,18 +86,18 @@ def provision(
         None, "--kms-config", help="Backend-specific config key=value. Repeatable."
     ),
     postgres_version: str = typer.Option("16", "--postgres-version", help="Postgres major version tag."),
-    postgres_password: Optional[str] = typer.Option(
+    postgres_password: str | None = typer.Option(
         None, "--postgres-password", envvar="PGFORGE_POSTGRES_PASSWORD",
         help="Initial postgres password (random if unset).",
     ),
     filesystem: str = typer.Option("ext4", "--filesystem", help="ext4 or xfs."),
     mount_point: str = typer.Option("/mnt/pg", "--mount-point", help="Mount path on the server."),
-    container_name: Optional[str] = typer.Option(
+    container_name: str | None = typer.Option(
         None, "--container-name", help="Docker container name (defaults to pg-<name>)."
     ),
     port: int = typer.Option(5432, "--postgres-port", help="Host-side port on 127.0.0.1."),
     ssh_user: str = typer.Option("root", "--ssh-user", help="SSH user for remote orchestration."),
-    ssh_key: Optional[str] = typer.Option(None, "--ssh-key", help="Path to SSH private key."),
+    ssh_key: str | None = typer.Option(None, "--ssh-key", help="Path to SSH private key."),
     label: list[str] = typer.Option(None, "--label", help="Instance label, key=value. Repeatable."),
     no_cron: bool = typer.Option(False, "--no-cron", help="Skip snapshot cron bootstrap."),
     resume: bool = typer.Option(False, "--resume", help="Continue a partial provision."),
@@ -214,7 +212,6 @@ def provision(
             s.update_instance(inst)
         else:
             handle = _handle_from_state(inst)
-        keyfile_local = inst.kms.key_id
         # In runtime mode the server has no plaintext key file on disk; the
         # boot-time agent decrypts the envelope into tmpfs every boot. We
         # still need plaintext briefly during initial provisioning to drive

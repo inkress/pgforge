@@ -24,7 +24,6 @@ from __future__ import annotations
 import os
 import re
 import secrets
-import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, ClassVar
@@ -384,7 +383,7 @@ class AzureProvider(Provider):
                 files={f"/root/.pgforge/cred-{scope.instance_name}.env": body},
                 last4=client_id[-4:],
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning("SP mint failed (%s); falling back to ambient credentials", e)
             return RemoteCredential(
                 credential_id=f"azure-fallback-{secrets.token_hex(4)}",

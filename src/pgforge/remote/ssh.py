@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import io
 import shlex
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import PurePosixPath
-from typing import Iterator
 
 import paramiko
 

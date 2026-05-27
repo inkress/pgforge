@@ -7,7 +7,8 @@ manual intervention.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pgforge.errors import StateError
 from pgforge.state.schema import SCHEMA_VERSION

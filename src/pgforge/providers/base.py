@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, ClassVar
 
-
 # ---------------------------------------------------------------------------
 # Plain dataclasses returned across the abstraction
 # ---------------------------------------------------------------------------

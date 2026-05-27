@@ -103,7 +103,7 @@ def capacity(
             with RemoteHost(host=inst.ssh.host, user=inst.ssh.user, port=inst.ssh.port) as rh:
                 report.filesystem = collect_filesystem(rh, inst.mount.path)
                 report.postgres = collect_postgres(rh, inst.postgres.container_name)
-        except Exception as e:  # noqa: BLE001 — best-effort SSH
+        except Exception as e:
             report.notes.append(f"ssh probe failed: {e}")
         reports.append(report)
 

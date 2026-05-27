@@ -17,9 +17,8 @@ against the existing key":
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
-from pgforge.commands._common import emit_json, is_json, store, warn
+from pgforge.commands._common import emit_json, is_json, store
 from pgforge.errors import PgforgeError, SnapshotError, StateConflict
 from pgforge.kms.base import KeyHandle
 from pgforge.kms.registry import get_backend as get_kms
@@ -49,9 +48,9 @@ def run_restore(
     snapshot_id: str,
     source_instance: str,
     new_name: str,
-    target_server: Optional[str] = None,
+    target_server: str | None = None,
     postgres_port: int = 5432,
-    container_name: Optional[str] = None,
+    container_name: str | None = None,
 ) -> None:
     """Top-level restore handler called from ``commands/snapshot.py``."""
     s = store(ctx)

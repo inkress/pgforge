@@ -99,7 +99,7 @@ class EnvelopeKMSBackend(KMSBackend):
         ct = base64.b64decode(handle.envelope_ciphertext_b64)
         try:
             return self.decrypt(ct, handle)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             raise KMSDecryptionFailed(f"could not decrypt envelope: {e}") from e
 
     def delete(self, handle: KeyHandle) -> None:

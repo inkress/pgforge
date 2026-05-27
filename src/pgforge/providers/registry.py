@@ -7,7 +7,7 @@ provider module is imported on demand to keep ``pgforge --help`` fast.
 
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
 
 from pgforge.errors import ProviderUnsupported
 from pgforge.providers.base import Provider

@@ -10,7 +10,6 @@ from rich.table import Table
 
 from pgforge.commands._common import emit_json, is_json, store, warn
 from pgforge.errors import ConfigError, PgforgeError
-from pgforge.kms.registry import get_backend
 from pgforge.logging import out_console
 
 app = typer.Typer(help="Manage KMS handles tracked by pgforge.")
@@ -55,7 +54,7 @@ def rotate(
     key is still usable.
     """
     from pgforge.commands._common import confirm_destructive
-    from pgforge.kms.base import KeyHandle, KeySpec
+    from pgforge.kms.base import KeyHandle
     from pgforge.kms.registry import get_backend as get_kms
     from pgforge.remote.bootstrap import render_script
     from pgforge.remote.ssh import RemoteHost
@@ -108,7 +107,7 @@ def rotate(
         # 3. Delete the old key from KMS.
         try:
             kms_backend.delete(old_handle)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             warn(f"old KMS key delete failed (server-side rotation already complete): {e}")
 
     out_console.print(f"[green]rotated[/green] {name}: new key {new_handle.key_id}")

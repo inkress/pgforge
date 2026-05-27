@@ -63,7 +63,17 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "RUF"]
-ignore = ["E501"]
+ignore = [
+  "E501",     # long lines are fine; we soft-wrap in editors
+  "B008",     # `typer.Option(...)` in defaults is the idiomatic Typer pattern
+  "N818",     # exception names like `StateLocked`/`UserAbort` read better without -Error
+  "E702",     # semicolons in tests are acceptable
+  "UP037",    # quoted annotations are sometimes load-bearing in TYPE_CHECKING
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F841", "E702", "RUF022"]
+"src/pgforge/commands/snapshot.py" = ["F401"]  # provider-flavoured re-exports
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

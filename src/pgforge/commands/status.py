@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
 from rich.panel import Panel
 from rich.pretty import Pretty
@@ -20,7 +18,7 @@ from pgforge.logging import out_console
 
 def ls(
     ctx: typer.Context,
-    provider: Optional[str] = typer.Option(None, "--provider", help="Filter by provider name."),
+    provider: str | None = typer.Option(None, "--provider", help="Filter by provider name."),
 ) -> None:
     """List all instances pgforge knows about (from local state)."""
     instances = store(ctx).list_instances()

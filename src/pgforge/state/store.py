@@ -18,8 +18,9 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import IO, Iterator
+from typing import IO
 
 import portalocker
 

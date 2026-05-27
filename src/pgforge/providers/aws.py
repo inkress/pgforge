@@ -415,7 +415,7 @@ class AWSProvider(Provider):
                 files={f"/root/.pgforge/cred-{scope.instance_name}.env": body},
                 last4=access_id[-4:],
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning("IAM mint failed (%s); falling back to operator credentials", e)
             access_id = os.environ.get("AWS_ACCESS_KEY_ID", "")
             secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "")

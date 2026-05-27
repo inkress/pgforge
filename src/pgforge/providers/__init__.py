@@ -25,16 +25,16 @@ from pgforge.providers.registry import get_provider, list_providers, register
 
 __all__ = [
     "AttachedVolume",
-    "CapacityInfo",
     "CLIInfo",
+    "CapacityInfo",
     "Location",
     "Provider",
     "ProviderMetrics",
     "RemoteCredential",
+    "SSHEndpoint",
     "Server",
     "Snapshot",
     "SnapshotScope",
-    "SSHEndpoint",
     "TimeWindow",
     "Volume",
     "VolumeSpec",

@@ -116,7 +116,7 @@ def _pg_backup_stop(rh: RemoteHost, container: str, name: str) -> None:
 @app.command("ls")
 def list_snapshots(
     ctx: typer.Context,
-    name: Optional[str] = typer.Argument(None, help="Instance name; omit with --all."),
+    name: str | None = typer.Argument(None, help="Instance name; omit with --all."),
     all_: bool = typer.Option(False, "--all", help="List snapshots across all instances."),
 ) -> None:
     """List snapshots for one instance or all of them."""
@@ -167,11 +167,11 @@ def restore(
     snapshot_id: str = typer.Argument(..., help="Snapshot id."),
     instance: str = typer.Option(..., "--instance", help="Source instance (for provider lookup)."),
     new_name: str = typer.Option(..., "--to", help="Name for the new restored instance."),
-    target_server: Optional[str] = typer.Option(
+    target_server: str | None = typer.Option(
         None, "--server", help="Server to attach the restored volume to (defaults to source server)."
     ),
     port: int = typer.Option(5433, "--postgres-port", help="Host port for the restored container."),
-    container: Optional[str] = typer.Option(None, "--container-name", help="Docker container name."),
+    container: str | None = typer.Option(None, "--container-name", help="Docker container name."),
 ) -> None:
     """Restore a snapshot into a new volume + container."""
     from pgforge.commands._restore import run_restore
@@ -191,7 +191,7 @@ def restore(
 def prune(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Instance name."),
-    retention: Optional[str] = typer.Option(
+    retention: str | None = typer.Option(
         None,
         "--retain",
         help="Retention spec (defaults to the schedule's --retain).",
@@ -239,8 +239,8 @@ def prune(
 def schedule(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Instance name."),
-    cron: Optional[str] = typer.Option(None, "--cron", help="Cron expression (5 fields, UTC)."),
-    retention: Optional[str] = typer.Option(None, "--retain", help="Retention spec, e.g. 7d,4w,3m."),
+    cron: str | None = typer.Option(None, "--cron", help="Cron expression (5 fields, UTC)."),
+    retention: str | None = typer.Option(None, "--retain", help="Retention spec, e.g. 7d,4w,3m."),
     disable: bool = typer.Option(False, "--disable", help="Remove the schedule."),
     show_: bool = typer.Option(False, "--show", help="Print the active schedule."),
     quiesce: bool = typer.Option(
@@ -285,7 +285,7 @@ def schedule(
             location=inst.provider_resources.location,
         )
     )
-    credential_content: Optional[str] = None
+    credential_content: str | None = None
     if cred.mode == "file_credential" and cred.files:
         first_path, first_body = next(iter(cred.files.items()))
         credential_content = first_body

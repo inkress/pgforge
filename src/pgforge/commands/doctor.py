@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
 from rich.table import Table
 
@@ -16,7 +14,7 @@ from pgforge.providers.registry import get_provider, iter_implemented, list_prov
 
 def doctor(
     ctx: typer.Context,
-    provider: Optional[str] = typer.Option(None, "--provider", help="Check only this provider."),
+    provider: str | None = typer.Option(None, "--provider", help="Check only this provider."),
 ) -> None:
     """Check that the required cloud CLIs are installed and authenticated."""
     results = []

@@ -19,7 +19,6 @@ import json
 import os
 import re
 import secrets
-import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, ClassVar
@@ -317,10 +316,8 @@ class GCPProvider(Provider):
                 ],
                 check=True,
             )
-            # Bind disk-level role.
-            disk_url = (
-                f"projects/{self._project}/zones/{scope.location}/disks/{scope.volume_id}"
-            )
+            # Bind disk-level role (disk URL would be:
+            # projects/{project}/zones/{location}/disks/{volume_id})
             run(
                 [
                     self._binary, "compute", "disks", "add-iam-policy-binding",
@@ -361,7 +358,7 @@ class GCPProvider(Provider):
                 },
                 last4=key_id or "????",
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning("SA mint failed (%s); using operator credentials instead", e)
             env_body = (
                 f"# pgforge could not mint a service account. Configure gcloud on the VM.\n"
