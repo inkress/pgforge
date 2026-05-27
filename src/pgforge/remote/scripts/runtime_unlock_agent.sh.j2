@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# pgforge runtime unlock agent.
+#
+# Runs at boot before /etc/crypttab is processed. Reaches out to the cloud
+# KMS to decrypt an envelope-encrypted DEK, writes the plaintext to a tmpfs
+# keyfile, and lets cryptsetup-luks-*.service open the volume.
+#
+# Variables (Jinja-rendered at install time):
+#   instance_name
+#   provider          — "aws", "gcp", "azure", "vault" (driving which CLI to call)
+#   envelope_b64      — the encrypted DEK, base64
+#   kms_key_ref       — backend-specific key reference (CMK ARN / GCP key path / KV name+key / Vault path)
+#   target_keyfile    — where the plaintext DEK is dropped (on tmpfs)
+set -euo pipefail
+export TZ=UTC
+
+INSTANCE={{ instance_name | tojson }}
+PROVIDER={{ provider | tojson }}
+ENVELOPE_B64={{ envelope_b64 | tojson }}
+KMS_REF={{ kms_key_ref | tojson }}
+KEYFILE={{ target_keyfile | tojson }}
+
+mkdir -p "$(dirname "$KEYFILE")"
+# Mount a tmpfs for the keyfile so it never touches disk.
+if ! mountpoint -q "$(dirname "$KEYFILE")"; then
+  mount -t tmpfs -o size=4m,mode=0700 tmpfs "$(dirname "$KEYFILE")"
+fi
+
+decrypt_aws() {
+  echo "$ENVELOPE_B64" | base64 -d > /tmp/pgforge.envelope
+  aws kms decrypt --ciphertext-blob fileb:///tmp/pgforge.envelope \
+    --output text --query Plaintext | base64 -d > "$KEYFILE"
+  rm -f /tmp/pgforge.envelope
+}
+
+decrypt_gcp() {
+  echo "$ENVELOPE_B64" | base64 -d > /tmp/pgforge.envelope
+  gcloud kms decrypt --key "$KMS_REF" \
+    --ciphertext-file /tmp/pgforge.envelope \
+    --plaintext-file "$KEYFILE"
+  rm -f /tmp/pgforge.envelope
+}
+
+decrypt_azure() {
+  # KMS_REF format: vault/key
+  VAULT="${KMS_REF%%/*}"
+  KEY="${KMS_REF#*/}"
+  echo "$ENVELOPE_B64" | base64 -d > /tmp/pgforge.envelope
+  RESULT=$(az keyvault key decrypt --vault-name "$VAULT" --name "$KEY" \
+    --algorithm RSA-OAEP-256 --value "$ENVELOPE_B64" --data-type base64 \
+    -o tsv --query result)
+  echo "$RESULT" | base64 -d > "$KEYFILE"
+  rm -f /tmp/pgforge.envelope
+}
+
+decrypt_vault() {
+  # ENVELOPE_B64 already contains "vault:v1:..." for transit; just unwrap.
+  CT=$(echo "$ENVELOPE_B64" | base64 -d)
+  vault write -format=json transit/decrypt/"${KMS_REF##*/}" "ciphertext=$CT" \
+    | jq -r '.data.plaintext' | base64 -d > "$KEYFILE"
+}
+
+case "$PROVIDER" in
+  aws) decrypt_aws ;;
+  gcp) decrypt_gcp ;;
+  azure) decrypt_azure ;;
+  vault) decrypt_vault ;;
+  *) echo "[pgforge] unknown KMS provider for runtime unlock: $PROVIDER" >&2; exit 71 ;;
+esac
+
+chmod 0400 "$KEYFILE"
+echo "[pgforge] runtime DEK staged at $KEYFILE"

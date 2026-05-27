@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pgforge"
+version = "0.1.0"
+description = "Multi-cloud CLI that provisions encrypted-at-rest Postgres instances (LUKS + Docker) across Hetzner, AWS, GCP, Azure, DigitalOcean, and Linode."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "pgforge contributors" }]
+keywords = ["postgres", "luks", "encryption", "hetzner", "aws", "gcp", "azure", "digitalocean", "linode", "kms", "snapshot", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Database",
+  "Topic :: Security :: Cryptography",
+  "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "pydantic>=2.5",
+  "jinja2>=3.1",
+  "paramiko>=3.4",
+  "tomli>=2.0;python_version<'3.11'",
+  "portalocker>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.4",
+  "mypy>=1.10",
+  "types-paramiko",
+]
+
+[project.scripts]
+pgforge = "pgforge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/example/pgforge"
+Source = "https://github.com/example/pgforge"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pgforge"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+# Ensure the Jinja templates ship even though .sh.j2 files aren't Python.
+# (The scripts directory is already a package via __init__.py, but be explicit.)
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "RUF"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: opt-in integration tests against real clouds (set PGFORGE_INTEGRATION=1)",
+  "provider: parametrized by provider name",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.10"
+strict_optional = true
+warn_unused_ignores = true

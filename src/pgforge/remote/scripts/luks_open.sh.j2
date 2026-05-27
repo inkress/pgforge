@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Open the LUKS container, then mkfs.ext4 the inside if no filesystem exists.
+#
+# Variables:
+#   device       — backing block device
+#   mapper       — name under /dev/mapper, e.g. pgdata
+#   keyfile      — server-side keyfile path
+#   filesystem   — "ext4" or "xfs"
+#   mount_point  — where to mount the decrypted device
+set -euo pipefail
+
+DEVICE={{ device | tojson }}
+MAPPER={{ mapper | tojson }}
+KEYFILE={{ keyfile | tojson }}
+FILESYSTEM={{ filesystem | tojson }}
+MOUNT={{ mount_point | tojson }}
+
+# Open the LUKS device under /dev/mapper/$MAPPER (no-op if already open).
+if [ ! -e "/dev/mapper/$MAPPER" ]; then
+  echo "[pgforge] luksOpen $DEVICE -> /dev/mapper/$MAPPER"
+  cryptsetup luksOpen --key-file "$KEYFILE" "$DEVICE" "$MAPPER"
+fi
+
+# Create the filesystem inside if it's not there yet.
+if ! blkid "/dev/mapper/$MAPPER" >/dev/null 2>&1; then
+  echo "[pgforge] mkfs.$FILESYSTEM /dev/mapper/$MAPPER"
+  case "$FILESYSTEM" in
+    ext4) mkfs.ext4 -q "/dev/mapper/$MAPPER" ;;
+    xfs)  mkfs.xfs  -q "/dev/mapper/$MAPPER" ;;
+    *)    echo "[pgforge] unsupported filesystem: $FILESYSTEM" >&2; exit 21 ;;
+  esac
+fi
+
+mkdir -p "$MOUNT"
+if ! mountpoint -q "$MOUNT"; then
+  echo "[pgforge] mount /dev/mapper/$MAPPER at $MOUNT"
+  mount "/dev/mapper/$MAPPER" "$MOUNT"
+fi
+mkdir -p "$MOUNT/data"

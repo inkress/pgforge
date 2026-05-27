@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Remove pgforge artefacts for one instance from the server.
+# Stops the Postgres container, unmounts, closes LUKS, removes crypttab/fstab
+# entries, removes cron, removes keys & credentials. Idempotent.
+#
+# Variables:
+#   container_name
+#   mapper
+#   mount_point
+#   keyfile
+#   credential_path
+#   cron_file
+set -euo pipefail
+
+CONTAINER={{ container_name | tojson }}
+MAPPER={{ mapper | tojson }}
+MOUNT={{ mount_point | tojson }}
+KEYFILE={{ keyfile | tojson }}
+CRED={{ credential_path | tojson }}
+CRON={{ cron_file | tojson }}
+
+echo "[pgforge] removing cron $CRON"
+rm -f "$CRON"
+
+if docker ps -a --format '{{ "{{" }}.Names{{ "}}" }}' | grep -qx "$CONTAINER"; then
+  echo "[pgforge] stopping container $CONTAINER"
+  docker stop "$CONTAINER" >/dev/null || true
+  docker rm "$CONTAINER" >/dev/null || true
+fi
+
+if mountpoint -q "$MOUNT"; then
+  echo "[pgforge] unmounting $MOUNT"
+  umount "$MOUNT"
+fi
+
+if [ -e "/dev/mapper/$MAPPER" ]; then
+  echo "[pgforge] closing LUKS /dev/mapper/$MAPPER"
+  cryptsetup luksClose "$MAPPER" || true
+fi
+
+# Strip the crypttab line for this mapper.
+if [ -f /etc/crypttab ]; then
+  sed -i "/^[[:space:]]*$MAPPER[[:space:]]/d" /etc/crypttab
+fi
+# Strip the fstab line for this mountpoint.
+if [ -f /etc/fstab ]; then
+  ESC_MOUNT=$(printf '%s' "$MOUNT" | sed 's:/:\\/:g')
+  sed -i "/[[:space:]]$ESC_MOUNT[[:space:]]/d" /etc/fstab
+fi
+
+# Wipe & remove key and credential files.
+for f in "$KEYFILE" "$CRED"; do
+  if [ -f "$f" ]; then
+    size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+    if [ "$size" -gt 0 ]; then
+      dd if=/dev/zero of="$f" bs=1 count="$size" conv=notrunc >/dev/null 2>&1 || true
+    fi
+    rm -f "$f"
+  fi
+done

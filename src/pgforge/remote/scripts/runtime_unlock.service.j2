@@ -1,0 +1,15 @@
+[Unit]
+Description=pgforge runtime DEK unlock for {{ instance_name }}
+DefaultDependencies=no
+# Run before crypttab processes the LUKS volume.
+Before=cryptsetup-pre.target cryptsetup.target
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/pgforge-runtime-unlock-{{ instance_name }}
+
+[Install]
+WantedBy=cryptsetup.target

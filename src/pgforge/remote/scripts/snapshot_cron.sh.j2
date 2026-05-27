@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Take a snapshot of the encrypted volume by calling the provider CLI, then
+# apply the retention policy.
+#
+# Variables:
+#   instance_name
+#   provider       — "hetzner", "aws", ...
+#   volume_id
+#   luks_uuid
+#   pgforge_version
+#   retention      — string passed to pgforge-snapshot-prune (e.g. "7d,4w,3m")
+#   credential_path  — file holding the cloud token (sourced)
+#   container_name  — postgres container to checkpoint before snapshot
+set -euo pipefail
+export TZ=UTC
+export LANG=C
+
+INSTANCE={{ instance_name | tojson }}
+PROVIDER={{ provider | tojson }}
+VOLUME_ID={{ volume_id | tojson }}
+LUKS_UUID={{ luks_uuid | tojson }}
+PGFORGE_VERSION={{ pgforge_version | tojson }}
+RETENTION={{ retention | tojson }}
+CRED={{ credential_path | tojson }}
+CONTAINER={{ container_name | tojson }}
+
+LOG=/var/log/pgforge/${INSTANCE}.log
+mkdir -p "$(dirname "$LOG")"
+exec >>"$LOG" 2>&1
+
+echo "------- $(date -u +%FT%TZ) snapshot start -------"
+
+# Pre-snapshot: try to checkpoint Postgres so WAL is small on restore.
+# Best-effort: we tolerate failures here.
+QUIESCE={{ quiesce | tojson }}
+if docker exec "$CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then
+  if [ "$QUIESCE" = "true" ]; then
+    # SQL-consistent: pg_backup_start, snapshot, pg_backup_stop.
+    docker exec "$CONTAINER" psql -U postgres -tAc \
+      "SELECT pg_backup_start('pgforge-${INSTANCE}', true);" >/dev/null 2>&1 || true
+  else
+    docker exec "$CONTAINER" psql -U postgres -c "CHECKPOINT;" >/dev/null 2>&1 || true
+  fi
+fi
+
+# Ensure pg_backup_stop runs even if the snapshot call below fails.
+trap 'if [ "$QUIESCE" = "true" ]; then docker exec "$CONTAINER" psql -U postgres -tAc "SELECT pg_backup_stop();" >/dev/null 2>&1 || true; fi' EXIT
+
+# Source credentials (file sets PROVIDER-specific env vars).
+if [ -r "$CRED" ]; then
+  # shellcheck disable=SC1090
+  . "$CRED"
+fi
+
+TS=$(date -u +%Y%m%d-%H%M%S)
+NAME="pgforge-${INSTANCE}-${TS}"
+
+case "$PROVIDER" in
+  hetzner)
+    hcloud volume create-snapshot "$VOLUME_ID" \
+      --description "$NAME" \
+      --label "pgforge-instance=$INSTANCE" \
+      --label "pgforge-luks-uuid=$LUKS_UUID" \
+      --label "pgforge-version=$PGFORGE_VERSION"
+    ;;
+  aws)
+    aws ec2 create-snapshot \
+      --volume-id "$VOLUME_ID" \
+      --description "$NAME" \
+      --tag-specifications \
+        "ResourceType=snapshot,Tags=[{Key=pgforge-instance,Value=$INSTANCE},{Key=pgforge-luks-uuid,Value=$LUKS_UUID},{Key=pgforge-version,Value=$PGFORGE_VERSION}]"
+    ;;
+  gcp)
+    gcloud compute snapshots create "$NAME" \
+      --source-disk="$VOLUME_ID" \
+      --labels="pgforge-instance=$INSTANCE,pgforge-luks-uuid=$LUKS_UUID,pgforge-version=$PGFORGE_VERSION"
+    ;;
+  azure)
+    az snapshot create \
+      --name "$NAME" \
+      --source "$VOLUME_ID" \
+      --tags "pgforge-instance=$INSTANCE" "pgforge-luks-uuid=$LUKS_UUID" "pgforge-version=$PGFORGE_VERSION"
+    ;;
+  digitalocean)
+    doctl compute volume snapshot "$VOLUME_ID" --snapshot-name "$NAME"
+    ;;
+  linode)
+    linode-cli volumes clone "$VOLUME_ID" --label "$NAME"
+    ;;
+  *)
+    echo "unsupported provider: $PROVIDER" >&2
+    exit 91
+    ;;
+esac
+
+# Retention is enforced by an operator-side command (pgforge calls into the
+# provider CLI to list/delete older snapshots). The server-side cron only
+# creates snapshots; pruning is centralized.
+
+echo "------- $(date -u +%FT%TZ) snapshot done   -------"

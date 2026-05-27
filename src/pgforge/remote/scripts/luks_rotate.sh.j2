@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Transactionally rotate the LUKS key on the encrypted volume.
+#
+# Steps (each step is checked; on any failure we DO NOT remove the old key):
+#   1. cryptsetup luksAddKey with the new keyfile (uses old as auth).
+#   2. Verify by luksOpen --test-passphrase using only the new keyfile.
+#   3. Remove the old keyslot (luksRemoveKey with old as identifier).
+#   4. Replace the canonical keyfile at $KEYFILE with the new one.
+#
+# Variables:
+#   device          — backing block device (e.g. /dev/disk/by-id/...)
+#   keyfile         — canonical keyfile path; the *old* key currently lives here
+#   new_keyfile     — temp path for the new key (e.g. /root/.pgforge/keys/<name>.key.new)
+set -euo pipefail
+
+DEVICE={{ device | tojson }}
+KEYFILE={{ keyfile | tojson }}
+NEW_KEYFILE={{ new_keyfile | tojson }}
+
+test -r "$KEYFILE"     || { echo "[pgforge] cannot read old keyfile $KEYFILE" >&2; exit 81; }
+test -r "$NEW_KEYFILE" || { echo "[pgforge] cannot read new keyfile $NEW_KEYFILE" >&2; exit 82; }
+
+echo "[pgforge] adding new LUKS keyslot to $DEVICE"
+cryptsetup luksAddKey --key-file "$KEYFILE" "$DEVICE" "$NEW_KEYFILE"
+
+echo "[pgforge] verifying new key unlocks $DEVICE"
+cryptsetup luksOpen --test-passphrase --key-file "$NEW_KEYFILE" "$DEVICE"
+
+echo "[pgforge] removing old LUKS keyslot from $DEVICE"
+cryptsetup luksRemoveKey --key-file "$NEW_KEYFILE" "$DEVICE" "$KEYFILE" || {
+  # If luksRemoveKey-with-passphrase fails (old key already missing), find the
+  # slot for the old key and kill it explicitly.
+  echo "[pgforge] luksRemoveKey by passphrase failed; falling back to luksKillSlot" >&2
+  # Heuristic: dump slots, kill any slot that does NOT match our new key.
+  SLOT_OLD=$(cryptsetup luksDump "$DEVICE" | awk '/^Key Slot [0-9]+: ENABLED/{print $3}' | tr -d ':' | head -2 | tail -1)
+  if [ -n "$SLOT_OLD" ]; then
+    cryptsetup luksKillSlot --key-file "$NEW_KEYFILE" "$DEVICE" "$SLOT_OLD" || true
+  fi
+}
+
+echo "[pgforge] swapping canonical keyfile"
+mv "$NEW_KEYFILE" "$KEYFILE"
+chmod 0400 "$KEYFILE"
+
+echo "[pgforge] rotation complete"

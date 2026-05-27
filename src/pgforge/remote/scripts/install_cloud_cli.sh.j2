@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Install the official CLI for one cloud provider on the DB server.
+# Used to bootstrap server-side cron.
+#
+# Variables:
+#   provider     — "hetzner", "aws", "gcp", "azure", "digitalocean", "linode"
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+PROVIDER={{ provider | tojson }}
+
+install_hcloud() {
+  if command -v hcloud >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing hcloud"
+  curl -fsSL "https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz" \
+    | tar -xz -C /usr/local/bin hcloud
+  chmod +x /usr/local/bin/hcloud
+}
+
+install_awscli() {
+  if command -v aws >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing aws cli v2"
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  apt-get update -qq && apt-get install -y -qq unzip
+  unzip -q /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install --update
+  rm -rf /tmp/aws /tmp/awscliv2.zip
+}
+
+install_gcloud() {
+  if command -v gcloud >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing gcloud"
+  apt-get update -qq
+  apt-get install -y -qq apt-transport-https ca-certificates gnupg curl
+  echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+    >/etc/apt/sources.list.d/google-cloud-sdk.list
+  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+  apt-get update -qq && apt-get install -y -qq google-cloud-cli
+}
+
+install_az() {
+  if command -v az >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing az cli"
+  curl -fsSL https://aka.ms/InstallAzureCLIDeb | bash
+}
+
+install_doctl() {
+  if command -v doctl >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing doctl"
+  curl -fsSL "https://github.com/digitalocean/doctl/releases/latest/download/doctl-1.0.0-linux-amd64.tar.gz" \
+    | tar -xz -C /usr/local/bin
+  chmod +x /usr/local/bin/doctl
+}
+
+install_linode_cli() {
+  if command -v linode-cli >/dev/null 2>&1; then return; fi
+  echo "[pgforge] installing linode-cli via pip"
+  apt-get update -qq && apt-get install -y -qq python3-pip
+  pip3 install --quiet linode-cli
+}
+
+case "$PROVIDER" in
+  hetzner) install_hcloud ;;
+  aws) install_awscli ;;
+  gcp) install_gcloud ;;
+  azure) install_az ;;
+  digitalocean) install_doctl ;;
+  linode) install_linode_cli ;;
+  *) echo "unknown provider: $PROVIDER" >&2; exit 91 ;;
+esac

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Run (or restart) the Postgres Docker container on the encrypted mount.
+# Idempotent: starts an existing container if present, else `docker run`s.
+#
+# Variables:
+#   container_name
+#   image            — e.g. postgres:16
+#   mount_point      — the encrypted mount, e.g. /mnt/pg
+#   data_subdir      — subdirectory under mount_point to hold PGDATA
+#   port             — host-side port to bind (always to 127.0.0.1)
+#   pg_password      — initial superuser password
+set -euo pipefail
+
+NAME={{ container_name | tojson }}
+IMAGE={{ image | tojson }}
+MOUNT={{ mount_point | tojson }}
+DATA_SUB={{ data_subdir | tojson }}
+PORT={{ port }}
+PASSWORD={{ pg_password | tojson }}
+
+mkdir -p "$MOUNT/$DATA_SUB"
+
+if docker ps -a --format '{{ "{{" }}.Names{{ "}}" }}' | grep -qx "$NAME"; then
+  echo "[pgforge] starting existing container $NAME"
+  docker start "$NAME" >/dev/null
+else
+  echo "[pgforge] launching new container $NAME ($IMAGE)"
+  docker run -d \
+    --name "$NAME" \
+    --restart unless-stopped \
+    -e POSTGRES_PASSWORD="$PASSWORD" \
+    -e PGDATA=/var/lib/postgresql/data/pgdata \
+    -v "$MOUNT/$DATA_SUB:/var/lib/postgresql/data" \
+    -p "127.0.0.1:$PORT:5432" \
+    "$IMAGE" >/dev/null
+fi
+
+# Wait briefly for Postgres to accept connections.
+for _ in $(seq 1 30); do
+  if docker exec "$NAME" pg_isready -U postgres -h 127.0.0.1 >/dev/null 2>&1; then
+    echo "[pgforge] Postgres is ready"
+    exit 0
+  fi
+  sleep 2
+done
+echo "[pgforge] WARNING: Postgres did not become ready within 60s" >&2

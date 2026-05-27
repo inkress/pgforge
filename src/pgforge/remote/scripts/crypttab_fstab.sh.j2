@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Persist the encrypted mount across reboots via /etc/crypttab + /etc/fstab.
+# Uses UUID of the underlying device so renames don't break things.
+#
+# Variables:
+#   device       — backing block device
+#   mapper       — /dev/mapper name
+#   keyfile      — server-side keyfile path
+#   mount_point  — mount path
+#   filesystem   — ext4 / xfs
+set -euo pipefail
+
+DEVICE={{ device | tojson }}
+MAPPER={{ mapper | tojson }}
+KEYFILE={{ keyfile | tojson }}
+MOUNT={{ mount_point | tojson }}
+FILESYSTEM={{ filesystem | tojson }}
+
+UUID=$(blkid -s UUID -o value "$DEVICE")
+test -n "$UUID" || { echo "[pgforge] could not read UUID of $DEVICE" >&2; exit 31; }
+
+if ! grep -qE "^[[:space:]]*$MAPPER[[:space:]]" /etc/crypttab 2>/dev/null; then
+  echo "[pgforge] adding /etc/crypttab entry for $MAPPER"
+  echo "$MAPPER UUID=$UUID $KEYFILE luks,nofail" >> /etc/crypttab
+fi
+
+if ! grep -qE "[[:space:]]$MOUNT[[:space:]]" /etc/fstab 2>/dev/null; then
+  echo "[pgforge] adding /etc/fstab entry for $MOUNT"
+  echo "/dev/mapper/$MAPPER $MOUNT $FILESYSTEM defaults,nofail 0 2" >> /etc/fstab
+fi

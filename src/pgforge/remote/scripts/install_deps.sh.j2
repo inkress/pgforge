@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Install cryptsetup and Docker on the target server.
+# Idempotent: skips anything already installed.
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+if ! command -v cryptsetup >/dev/null 2>&1; then
+  echo "[pgforge] installing cryptsetup"
+  apt-get update -qq
+  apt-get install -y -qq cryptsetup
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "[pgforge] installing docker"
+  curl -fsSL https://get.docker.com | sh >/dev/null
+fi
+
+mkdir -p /root/.pgforge/keys
+chmod 700 /root/.pgforge
+chmod 700 /root/.pgforge/keys
+mkdir -p /var/log/pgforge
+chmod 750 /var/log/pgforge

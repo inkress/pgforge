@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# luksFormat the encrypted volume IF AND ONLY IF it isn't already LUKS.
+# Mirrors the bash baseline's `cryptsetup isLuks` check — idempotent.
+#
+# Variables (Jinja):
+#   device       — block device path, e.g. /dev/disk/by-id/scsi-0HC_Volume_42
+#   keyfile      — absolute path to the LUKS key on the server
+#   cipher       — e.g. aes-xts-plain64 (default in pgforge)
+#   key_size     — LUKS key size in bits (e.g. 512)
+set -euo pipefail
+
+DEVICE={{ device | tojson }}
+KEYFILE={{ keyfile | tojson }}
+CIPHER={{ cipher | tojson }}
+KEYSIZE={{ key_size }}
+
+# Wait for udev to publish the symlink for newly-attached volumes.
+for _ in $(seq 1 30); do
+  if [ -e "$DEVICE" ]; then break; fi
+  sleep 2
+done
+test -e "$DEVICE" || { echo "[pgforge] device $DEVICE never appeared" >&2; exit 11; }
+
+if cryptsetup isLuks "$DEVICE" 2>/dev/null; then
+  echo "[pgforge] $DEVICE is already LUKS-formatted; skipping luksFormat"
+  exit 0
+fi
+
+echo "[pgforge] luksFormat $DEVICE ($CIPHER / ${KEYSIZE}-bit / LUKS2 / argon2id)"
+cryptsetup luksFormat \
+  --type luks2 \
+  --cipher "$CIPHER" \
+  --key-size "$KEYSIZE" \
+  --pbkdf argon2id \
+  --batch-mode \
+  "$DEVICE" "$KEYFILE"
