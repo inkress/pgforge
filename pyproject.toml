@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pgforge"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-cloud CLI that provisions encrypted-at-rest Postgres instances (LUKS + Docker) across Hetzner, AWS, GCP, Azure, DigitalOcean, and Linode."
 readme = "README.md"
 license = { text = "MIT" }
@@ -47,8 +47,11 @@ dev = [
 pgforge = "pgforge.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/example/pgforge"
-Source = "https://github.com/example/pgforge"
+Homepage = "https://github.com/inkress/pgforge"
+Source = "https://github.com/inkress/pgforge"
+Changelog = "https://github.com/inkress/pgforge/blob/main/CHANGELOG.md"
+Issues = "https://github.com/inkress/pgforge/issues"
+Documentation = "https://github.com/inkress/pgforge#readme"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgforge"]

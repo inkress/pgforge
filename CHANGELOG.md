@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-27
+
+### Fixed
+
+- PyPI project URLs now point to `github.com/inkress/pgforge` (0.1.0
+  shipped with placeholder `github.com/example/pgforge` URLs).
+- Added `Changelog`, `Issues`, and `Documentation` project URLs so PyPI's
+  sidebar links are useful.
+
 ## [0.1.0] — 2026-05-26
 
 Initial public release.
@@ -50,5 +59,6 @@ Initial public release.
   static-mode KMS is *key-as-escrow*, not runtime decryption. Runtime mode
   upgrades the posture against offline boot-disk theft.
 
-[Unreleased]: https://github.com/inkress/pgforge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/inkress/pgforge/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/inkress/pgforge/releases/tag/v0.1.1
 [0.1.0]: https://github.com/inkress/pgforge/releases/tag/v0.1.0
